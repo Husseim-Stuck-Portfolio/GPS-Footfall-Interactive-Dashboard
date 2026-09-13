@@ -10,7 +10,7 @@ from streamlit_folium import st_folium
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DATA_PATH = PROJECT_ROOT / "output_file" / "trajectories_footfall_Stuck_husseim.parquet copy"
+DEFAULT_DATA_PATH = PROJECT_ROOT / "output_file" / "trajectories_footfall_Stuck_husseim.parquet"
 REQUIRED_COLUMNS = {"user", "timestamp", "lat", "lng", "speed", "footfall"}
 MODE_COLOURS = {
     "Stationary": "#64748b",
