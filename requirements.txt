@@ -1,0 +1,6 @@
+streamlit>=1.39
+pandas>=2.1
+pyarrow>=14.0
+folium>=0.17
+streamlit-folium>=0.22
+plotly>=5.24
