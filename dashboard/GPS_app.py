@@ -6,7 +6,7 @@ import folium
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-import streamlit_analytics
+import streamlit_analytics2 as streamlit_analytics
 from streamlit_folium import st_folium
 
 with streamlit_analytics.track():
@@ -89,13 +89,23 @@ def movement_indicator(label: str, icon: str, duration: float) -> None:
 def build_map(data: pd.DataFrame, show_routes: bool) -> folium.Map:
     """Build a map of the filtered observations over OpenStreetMap tiles."""
     map_view = folium.Map(location=[data["lat"].mean(), data["lng"].mean()], zoom_start=13, control_scale=True, tiles=None)
-    folium.TileLayer(tiles="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attr="© OpenStreetMap contributors", name="OpenStreetMap").add_to(map_view)
+    folium.TileLayer(
+        tiles="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        attr="© OpenStreetMap contributors",
+        name="OpenStreetMap",
+    ).add_to(map_view)
 
     if show_routes:
         routes = folium.FeatureGroup(name="Visible user routes", show=True)
         for user, route in data.sort_values("timestamp_dt").groupby("user"):
             if len(route) > 1:
-                folium.PolyLine(route[["lat", "lng"]].values.tolist(), color="#475569", weight=2, opacity=.45, tooltip=f"Route: {user}").add_to(routes)
+                folium.PolyLine(
+                    route[["lat", "lng"]].values.tolist(),
+                    color="#475569",
+                    weight=2,
+                    opacity=0.45,
+                    tooltip=f"Route: {user}",
+                ).add_to(routes)
         routes.add_to(map_view)
 
     for group, points in data.groupby("speed_group", sort=False):
@@ -103,10 +113,22 @@ def build_map(data: pd.DataFrame, show_routes: bool) -> folium.Map:
         colour = MODE_COLOURS[group]
         for row in points.itertuples():
             speed_text = "invalid" if pd.isna(row.speed) or row.speed < 0 else f"{row.speed:.2f} m/s"
-            popup = (f"<b>User:</b> {row.user}<br><b>Time (UTC):</b> {row.timestamp_dt:%Y-%m-%d %H:%M:%S}<br>"
-                     f"<b>Speed:</b> {speed_text}<br><b>Speed group:</b> {row.speed_group}<br><b>Footfall:</b> {int(row.footfall)}")
-            folium.CircleMarker([row.lat, row.lng], radius=4, color=colour, fill=True, fill_color=colour, fill_opacity=.82, weight=1, popup=folium.Popup(popup, max_width=300)).add_to(layer)
+            popup = (
+                f"<b>User:</b> {row.user}<br><b>Time (UTC):</b> {row.timestamp_dt:%Y-%m-%d %H:%M:%S}<br>"
+                f"<b>Speed:</b> {speed_text}<br><b>Speed group:</b> {row.speed_group}<br><b>Footfall:</b> {int(row.footfall)}"
+            )
+            folium.CircleMarker(
+                [row.lat, row.lng],
+                radius=4,
+                color=colour,
+                fill=True,
+                fill_color=colour,
+                fill_opacity=0.82,
+                weight=1,
+                popup=folium.Popup(popup, max_width=300),
+            ).add_to(layer)
         layer.add_to(map_view)
+
     folium.LayerControl(collapsed=False).add_to(map_view)
     return map_view
 
@@ -124,14 +146,16 @@ except (FileNotFoundError, ValueError, ImportError) as error:
 with st.sidebar:
     st.header("Map filters")
     stationary_limit = st.slider("Stationary maximum (m/s)", 0.0, 1.0, 0.3, 0.1)
-    walking_limit = st.slider("Walking maximum (m/s)", stationary_limit + .1, 3.0, 1.9, .1)
-    bicycle_limit = st.slider("Bicycle maximum (m/s)", walking_limit + .1, 15.0, 7.0, .1)
+    walking_limit = st.slider("Walking maximum (m/s)", stationary_limit + 0.1, 3.0, 1.9, 0.1)
+    bicycle_limit = st.slider("Bicycle maximum (m/s)", walking_limit + 0.1, 15.0, 7.0, 0.1)
 
 data = classify_speed(raw_data, stationary_limit, walking_limit, bicycle_limit)
-valid_speed_max = max(15.0, float(data.loc[data["speed"] >= 0, "speed"].max()))
+valid_speed_series = data.loc[data["speed"] >= 0, "speed"]
+valid_speed_max = 15.0 if valid_speed_series.empty else max(15.0, float(valid_speed_series.max()))
+
 st.subheader("Choose a speed")
-speed_focus = st.slider("Speed (m/s)", 0.0, valid_speed_max, 1.0, .1, help="Move this slider to focus the map and statistics on a speed band.")
-speed_band = st.slider("Speed band (± m/s)", .05, 3.0, .30, .05)
+speed_focus = st.slider("Speed (m/s)", 0.0, valid_speed_max, 1.0, 0.1, help="Move this slider to focus the map and statistics on a speed band.")
+speed_band = st.slider("Speed band (± m/s)", 0.05, 3.0, 0.30, 0.05)
 focus_label, focus_icon, focus_duration = speed_mode(speed_focus, stationary_limit, walking_limit, bicycle_limit)
 movement_indicator(focus_label, focus_icon, focus_duration)
 st.caption(f"Showing valid observations from **{max(0, speed_focus - speed_band):.2f}** to **{speed_focus + speed_band:.2f} m/s**.")
@@ -142,10 +166,21 @@ with st.sidebar:
     show_routes = st.toggle("Show visible user routes", value=True)
     footfall_filter = st.radio("Footfall label", ["All", "Foot traffic (1)", "Not foot traffic (0)"])
     min_time, max_time = data["timestamp_dt"].min(), data["timestamp_dt"].max()
-    time_range = st.slider("Time range (UTC)", min_value=min_time.to_pydatetime(), max_value=max_time.to_pydatetime(), value=(min_time.to_pydatetime(), max_time.to_pydatetime()), format="YYYY-MM-DD HH:mm")
+    time_range = st.slider(
+        "Time range (UTC)",
+        min_value=min_time.to_pydatetime(),
+        max_value=max_time.to_pydatetime(),
+        value=(min_time.to_pydatetime(), max_time.to_pydatetime()),
+        format="YYYY-MM-DD HH:mm",
+    )
 
 start_time, end_time = (pd.Timestamp(item) for item in time_range)
-filtered = data[data["user"].astype(str).isin(selected_users) & data["timestamp_dt"].between(start_time, end_time) & data["speed"].between(max(0, speed_focus - speed_band), speed_focus + speed_band)].copy()
+filtered = data[
+    data["user"].astype(str).isin(selected_users)
+    & data["timestamp_dt"].between(start_time, end_time)
+    & data["speed"].between(max(0, speed_focus - speed_band), speed_focus + speed_band)
+].copy()
+
 if footfall_filter == "Foot traffic (1)":
     filtered = filtered[filtered["footfall"] == 1]
 elif footfall_filter == "Not foot traffic (0)":
@@ -163,19 +198,24 @@ metric_d.metric("Mean speed", f"{filtered['speed'].mean():.2f} m/s")
 
 st.subheader("Map")
 st.caption("Gray = stationary, green = walking, blue = bicycle, red = car/faster. Click a point for details.")
-st_folium(build_map(filtered, show_routes), height=620, use_container_width=True, returned_objects=[])
+st_folium(build_map(filtered, show_routes), height=620, width=None, returned_objects=[])
 
 chart_left, chart_right = st.columns(2)
 with chart_left:
     st.subheader("Matching speed distribution")
     speed_chart = px.histogram(filtered, x="speed", color="speed_group", nbins=25, color_discrete_map=MODE_COLOURS)
     speed_chart.update_layout(xaxis_title="Reported speed (m/s)", yaxis_title="GPS observations", legend_title="Speed group")
-    st.plotly_chart(speed_chart, use_container_width=True)
+    st.plotly_chart(speed_chart, width="stretch")
 with chart_right:
     st.subheader("Matching observations by user")
     counts = filtered.groupby(["user", "speed_group"]).size().reset_index(name="observations")
     user_chart = px.bar(counts, x="user", y="observations", color="speed_group", barmode="stack", color_discrete_map=MODE_COLOURS)
     user_chart.update_layout(xaxis_title="User", yaxis_title="GPS observations", legend_title="Speed group")
-    st.plotly_chart(user_chart, use_container_width=True)
+    st.plotly_chart(user_chart, width="stretch")
 
-st.download_button("Download matching observations as CSV", data=filtered.drop(columns=["timestamp_dt"]).to_csv(index=False).encode("utf-8"), file_name="gps_speed_selection.csv", mime="text/csv")
+st.download_button(
+    "Download matching observations as CSV",
+    data=filtered.drop(columns=["timestamp_dt"]).to_csv(index=False).encode("utf-8"),
+    file_name="gps_speed_selection.csv",
+    mime="text/csv",
+)
