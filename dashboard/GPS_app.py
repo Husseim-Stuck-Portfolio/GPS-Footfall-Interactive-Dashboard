@@ -6,7 +6,12 @@ import folium
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+import streamlit_analytics
 from streamlit_folium import st_folium
+
+with streamlit_analytics.track():
+    st.text_input("Write something")
+    st.button("Click me")
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
